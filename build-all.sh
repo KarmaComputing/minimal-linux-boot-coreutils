@@ -36,7 +36,7 @@ cd "$BUILD_DIR"
 
 cd "$SCRIPT_START_DIR"
 
-./create-init.sh
+./create-scratch-space.sh
 ./build-rootfs.sh
 
 echo If all is wel, you\'re now good to run the vm in qemu
