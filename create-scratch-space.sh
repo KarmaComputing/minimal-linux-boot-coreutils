@@ -11,14 +11,12 @@ mkdir "$SCRATCH_DIR"
 cd $SCRATCH_DIR
 
 
-mkdir bin dev proc sys etc root usr var
+mkdir bin dev proc sys etc root usr var home
 mkdir -p usr/bin/libexec # (sshd-session by (default?) compiles into /usr/bin/libexec
 mkdir -p etc/ssh
 mkdir -p var/run # (otherwise sshd cannot write its pid file)
+mkdir -p home/standard-user
 
-# Crate users/groups
-
-echo 'root:x:0:' > ./etc/group
 
 # Copy over busybox
 cp "$BUILD_ARTIFACTS_FOLDER"/busybox/busybox ./bin
@@ -45,14 +43,23 @@ done
 cd - && cd ../
 echo $PWD
 
+# Crate users/groups
+
 # Layout minimal user accounts
 echo 'root:x:0:0:root:/root:/bin/sh' > ./etc/passwd
+
+echo 'standard-user:x:1000:1000:standard-user:/home/standard-user:/bin/sh' >> ./etc/passwd
+
 # Without sshd user, you get 'Privilege separation user sshd does not exist'
 echo 'sshd:x:128:65534::/run/sshd:/usr/sbin/nologin' >> ./etc/passwd
 
 echo 'root:*:19216:0:99999:7:::' > ./etc/shadow
-
 echo 'echo 'root:x:0:' > ./etc/groups'
+
+echo 'Creating standard-user with default password password'
+echo 'standard-user:zyEbcafGgBcEw:20080:1000:99999:7:::' >> ./etc/shadow
+echo 'echo 'standard-user:x:1000:' > ./etc/groups'
+
 mkdir var/empty  # TODO Missing privilege separation directory: /var/empty (sshd wants it)
 # NOTE ownership of /var/empty is altered during init
 
