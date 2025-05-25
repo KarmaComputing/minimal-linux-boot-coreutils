@@ -20,6 +20,8 @@ Goal is to have mimimal but realistic node with network capabilities build in (`
 
 > Situation: How do I make a change to the `init` script without going through the whole process of re-building? I've built `initramfs` using [`build-all.sh`](https://github.com/KarmaComputing/minimal-linux-boot-coreutils/blob/c64027b54b12d488f83cef75b5fbfee3d444e661/build-all.sh#L1) but I want to make a quick change to the `init` script (generated in [`create-init.sh`](https://github.com/KarmaComputing/minimal-linux-boot-coreutils/blob/c64027b54b12d488f83cef75b5fbfee3d444e661/create-init.sh#L1), called by [create-scratch-space](https://github.com/KarmaComputing/minimal-linux-boot-coreutils/blob/c64027b54b12d488f83cef75b5fbfee3d444e661/create-scratch-space.sh#L71).
 
+📹 Video demonstration: [debugging Linux Kernel init script initramfs qemu alpine example](https://youtu.be/lpCHsihnV50)
+
 For a faster feedback loop, sometimes you want to speed up debugging your `rootfs.cpio.gz` init script which is inside your (initramfs / initrd) image- which is typically a gzipped, `cpio` archive. The bootloader extracts and loads this `initramfs` / `initrd` filesystem, calling your `init` script first. In this repo example, we [pass](https://github.com/KarmaComputing/minimal-linux-boot-coreutils/blob/c64027b54b12d488f83cef75b5fbfee3d444e661/run-qemu.sh#L5C144-L5C154) `init=/init` to the kernel args. During boot the `init` file
 (which is stored in the root (`/`) of the `initramfs` image, is ran first. Distributions can use this to perform initial setup, such as ensuring
 a minimal valid linux directory structure (`/dev`, `proc` etc) and handle other boot-time kernel arguments such as `ip=` to set boot time network ip addressing.
