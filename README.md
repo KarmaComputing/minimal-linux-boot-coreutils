@@ -36,7 +36,7 @@ ls -l rootfs.cpio.gz
 Above, you'll not be able to inspect the contents of your built `initramfs`. Take a look at your init script!
 ```
 less out/init
-``
+```
 Perhaps you want to make a change (such as add an `echo` or debug statement to your `init` script.
 
 #### How to I repack my `initramfs`?
@@ -47,6 +47,8 @@ We've come full circle, taking inspiration from [build-rootfs.sh](https://github
 cd out # make sure you're in your extracted initramfs folder
 find . | cpio -o -H newc | gzip > ../my-new-rootfs.cpio.gz
 ```
+
+You then might want to re-run your `qemu` debugging process: See [](https://github.com/KarmaComputing/minimal-linux-boot-coreutils/blob/c64027b54b12d488f83cef75b5fbfee3d444e661/run-qemu.sh#L5)- remembering to change the `-initrd rootfs.cpio.gz` argument.
 
 <strike>TODO: add [iproute2](https://github.com/iproute2/iproute2) for minimal routing.</strike>
 
