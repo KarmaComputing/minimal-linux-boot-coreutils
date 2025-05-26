@@ -15,6 +15,10 @@ Goal is to have mimimal but realistic node with network capabilities build in (`
 - Rememebr busybox needs to be static build (see .config)
   - <strike>dropbear needs at least a `dropbear_rsa_host_key` key config or will not start see [gist](https://gist.github.com/mad4j/7983719) </strike>
   - Prefering openssh for end user compatability (statically built)
+ 
+## Things you need to build
+
+See [./build-all.sh](./build-all.sh)
 
 ### How do I extract an `initramfs` / `initrd` gz cpio archive, view it's `init` script and repackage?
 
@@ -53,13 +57,79 @@ find . | cpio -o -H newc | gzip > ../my-new-rootfs.cpio.gz
 
 You then might want to re-run your `qemu` debugging process: See [](https://github.com/KarmaComputing/minimal-linux-boot-coreutils/blob/c64027b54b12d488f83cef75b5fbfee3d444e661/run-qemu.sh#L5)- remembering to change the `-initrd rootfs.cpio.gz` argument.
 
+## How do I use `ipxe` to provide dynamic kernel parameters at bootime, such as `ip=` kernel options?
+
+Booting with `qemu-system-x86_64` and [passing kernel options like `ip=` using the `append=` qemu options](https://github.com/KarmaComputing/minimal-linux-boot-coreutils/blob/7453eea727732761152ec306e822d54a4587934a/run-qemu.sh#L5) is great an all, (see also [debugging-linux-kernel-bootstrap-with-qemu](https://github.com/KarmaComputing/debugging-linux-kernel-bootstrap-with-qemu)), but how can I harness `iPXE` to provide `-append` kernel options dynamically via http✨?
+
+Fun fact, qemu actually bundles/uses `iPXE` internally. But ignore that. We're going to build and pass iPXE as an ISO to demonstrate booting from `iPXE` to set dynamic kernel options, opening up the possibility to boot from anywhere. The steps in brief (explained in detail after) are:
+
+1. Read the iPXE docs
+2. Clone iPXE
+3. Write your own `script.ipxe`
+4. Build your own `iPXE` ISO which bundles that iPXE script
+5. 'Start' your machine ( `qemu-system-x86_64` , in this instance simulating a bare metal server), passing qemu the `-boot d -cdrom image.iso` options
+6. Observe your virtual bare metal 'machine' do whatever you tell it to do (see step 1, did you see the [section about UEFI](https://ipxe.org/download#:~:text=128kB%20in%20size.-,UEFI,-iPXE%20supports%20both)?).
+
+```
+#1. iPXE.org docs https://ipxe.org/docs
+
+# 2.
+git clone https://github.com/ipxe/ipxe.git
+cd ipxe/src
+make # yes you have to do this, for all other build targets to be available. You'll probably be missing `build-essential` packages needed to build, so read the output, research and install any missing dependencies.
+# Again, the docs are helpful here https://ipxe.org/download#:~:text=You%20will%20need%20to%20have%20at%20least%20the%20following%20packages%20installed%20in%20order%20to%20build%20iPXE
+
+3. For example, given a manual `qemu` boot (which we'll put iPXE infront of momenterily) consider first the following which boots linux, and simulates a Network interface card (NIC) on
+   the host using [qemu SLIRP user networking](https://wiki.qemu.org/Documentation/Networking#:~:text=Network%20backend%20types) because its the most compatible friendly *documentation* approach for
+   networking (using tun/tap is 'better'/faster):
+
+```
+qemu_args=(
+  -enable-kvm # utilize hardware virtualization of processors
+  -cpu max  # Enables all features supported by the accelerator in the current host
+  -smp 4 
+  -m 4096 
+  -kernel vmlinuz-lts 
+  -initrd new-initramfs-lts
+  -serial mon:stdio # multiplex the QEMU Monitor with the serial port output
+  # Since we're using -serial, ask linux to direct kernel log to the serial
+  # so we can see it, withou this -append, we won't see the kernel boot log
+  # As there is no default graphical device we disable the display
+  # as we can work entirely in the terminal.
+  -display none
+  -device virtio-net-pci,netdev=mynet0
+  -netdev user,id=mynet0,dns=1.1.1.1
+)
+# Start qemu with the above args
+qemu-system-x86_64 "${qemu_args[@]}"
+```
+The above would start your linux instance, you'd then *manually* configure addressing on the virtual network card with the following:
+ip link set dev eth0 up
+ip addr add 10.0.2.10/24 dev eth0
+ip route get 1.1.1.1 # no root to host
+ip route add default via 10.0.2.2
+ip route get 1.1.1.1 # Now you have a route to host :)
+# Where did 10.0.2.2 come from? It's the gateway default when using qemu SLIRP network, see the image
+# on that page https://wiki.qemu.org/Documentation/Networking#:~:text=Network%20backend%20types it's trying
+# to tell you the default addressing scheme- did you notice valid host addresses start from address .9?
+# https://wiki.qemu.org/Documentation/Networking#:~:text=24%20instead%20of-,the%20default,-(10.0.2.0/24)%20and
+# I've read that page for years and it's still only just clicking.. they're not magic numbers they are defaults :)
+wget google.com # You'll see 'bad address'
+# For the same reasons (reading qemu SLIRP networking docs), you'll need to remember to set the nameserver to 10.0.2.3
+echo "nameserver 10.0.2.3" > /etc/resolv.conf
+wget google.com # Now DNS is configured, you'll hapily succeed with google.com being downloaded.
+# Pings won't work with SLIRP- unless enabled, if you need that agian, docs you've read the docs right?
+https://wiki.qemu.org/Documentation/Networking#:~:text=and%20guestfwd%20options.-,Enabling,-ping%20in%20the
+```
+Those same tedious networking steps above need to be
+- encoded into a `script.ipxe` (setting the if up - using the iPXE commands e.g. https://ipxe.org/cmd/ifopen , and all https://ipxe.org/cmd)
+.. TODO finish writing up
+
+
 <strike>TODO: add [iproute2](https://github.com/iproute2/iproute2) for minimal routing.</strike>
 
-## Things you need to build
 
-See [./build-all.sh](./build-all.sh)
-
-# What does this repo not include (yet)
+## What does this repo not include (yet)
 
 - Automated ci
 
