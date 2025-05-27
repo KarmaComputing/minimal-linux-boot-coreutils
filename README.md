@@ -77,27 +77,45 @@ Booting with `qemu-system-x86_64` and [passing kernel options like `ip=` using t
 
 Fun fact, qemu actually bundles/uses `iPXE` internally. But ignore that. We're going to build and pass iPXE as an ISO to demonstrate booting from `iPXE` to set dynamic kernel options, opening up the possibility to boot from anywhere. The steps in brief (explained in detail after) are:
 
-1. Read the iPXE docs
+1. Read the [iPXE docs](https://ipxe.org/docs)
 2. Clone iPXE
 3. Write your own `script.ipxe`
 4. Build your own `iPXE` ISO which bundles that iPXE script
 5. 'Start' your machine ( `qemu-system-x86_64` , in this instance simulating a bare metal server), passing qemu the `-boot d -cdrom image.iso` options
 6. Observe your virtual bare metal 'machine' do whatever you tell it to do (see step 1, did you see the [section about UEFI](https://ipxe.org/download#:~:text=128kB%20in%20size.-,UEFI,-iPXE%20supports%20both)?).
 
+Let's do the above for real!
+
 ```bash
-#1. iPXE.org docs https://ipxe.org/docs
+#1. Read iPXE.org docs https://ipxe.org/docs
 
 # 2.
 git clone https://github.com/ipxe/ipxe.git
 cd ipxe/src
-make # yes you have to do this, for all other build targets to be available. You'll probably be missing `build-essential` packages needed to build, so read the output, research and install any missing dependencies.
-# Again, the docs are helpful here https://ipxe.org/download#:~:text=You%20will%20need%20to%20have%20at%20least%20the%20following%20packages%20installed%20in%20order%20to%20build%20iPXE
+git checkout 2e8d45aeef813e7b25b4ac949d1407bc7ecd2ea8 # to keep docs valid. You may want to checkout a newer version by the time you read this
+make -j # yes you have to make initially, for all other build targets to be available.
+# When make fails, you'll probably be missing `build-essential` packages needed to build, so read the output, research and install any missing dependencies.
+# Again, the docs are helpful here: https://ipxe.org/download#:~:text=You%20will%20need%20to%20have%20at%20least%20the%20following%20packages%20installed%20in%20order%20to%20build%20iPXE
+```
 
-3. For example, given a manual `qemu` boot (which we'll put iPXE
+3. Now lets boot a kernel image & initramfs *without* iPXE first. For example, given a manual `qemu` boot (which we'll put iPXE
    in-front of momentarily) consider first the following which 
    boots linux, and simulates a Network interface card (NIC) on
    the host using [qemu SLIRP user networking](https://wiki.qemu.org/Documentation/Networking#:~:text=Network%20backend%20types) because its the most compatible friendly *documentation* approach for
    networking (using tun/tap is 'better'/faster):
+
+To run the below, you'll need At this point you're wishing you have ran `build-all.sh` successfully, if you haven't [here's one](https://boot.karmacomputing.co.uk/iso/alpine-netboot/boot/vmlinuz-lts) and but please don't use those, build you own ([./build-all.sh](./build-all.sh)) so you know what's in it.
+
+```bash
+# You should not use these, you should build you own! :) see build-all.sh
+# Get a linux kernel image
+wget https://boot.karmacomputing.co.uk/iso/alpine-netboot/boot/vmlinuz-lts
+# Get an external initramfs cpio bundle (for understanding read)
+# https://docs.kernel.org/filesystems/ramfs-rootfs-initramfs.html
+wget https://boot.karmacomputing.co.uk/iso/alpine-netboot/boot/initramfs-lts
+ ```
+
+```bash
 
 
   qemu_args=(
@@ -106,20 +124,29 @@ make # yes you have to do this, for all other build targets to be available. You
     -smp 4 
     -m 4096 
     -kernel vmlinuz-lts 
-    -initrd new-initramfs-lts
+    -initrd initramfs-lts
     -serial mon:stdio # multiplex the QEMU Monitor with the serial port output
 
     # Since we're using -serial, ask linux to direct kernel log to the serial
     # so we can see it, without this -append, we won't see the kernel boot log
     # As there is no default graphical device we disable the display
     # as we can work entirely in the terminal.
+    -append "console=ttyS0 init=/sbin/init"
     -display none
+    # This '-device' option is what creates the emulated network hardware (amazing, thanks qemu) well, it's virtio based, but
+    # think of this as qemu 'plugging in' a hardware network card for you- cool! It's not immediately obvious from the docs,
+    # but to do *useful* things like provide networking options on the command line,
+    # you also need to use the `-netdev` option as explained in the Qemu docs:
+    # https://wiki.qemu.org/Documentation/Networking#:~:text=QEMU%20will%20require%20you%20to%20provide%20options%20sufficient%20to%20define%20and%20connect%20up%20both%20parts
     -device virtio-net-pci,netdev=mynet0
+    # Oh look, the id= of the netdev matches the netdev option of the -device argument.
     -netdev user,id=mynet0,dns=1.1.1.1
     )
     # Start qemu with the above args
     qemu-system-x86_64 "${qemu_args[@]}"
 ```
+
+
 
 The above would start your linux instance, you'd then *manually* configure addressing on the virtual network card with the following:
 
@@ -177,10 +204,11 @@ Those same tedious networking steps above need to be:
 
 See https://lists.gnu.org/archive/html/coreutils/2019-04/msg00001.html </strike> switched to using `musl`.
 
+## Reading
 
-# Reading
 See also
 
+https://docs.kernel.org/filesystems/ramfs-rootfs-initramfs.html
 https://wiki.gentoo.org/wiki/Custom_Initramfs
 https://unix.stackexchange.com/a/305406
 https://landley.net/writing/rootfs-howto.html
