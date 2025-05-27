@@ -36,6 +36,7 @@ for sshUtility in $(find "$BUILD_ARTIFACTS_FOLDER"/openssh -maxdepth 1 -type f -
   echo Copying over "$sshUtility"
   cp "$sshUtility" ./usr/bin
 done
+ # No need to move sshd-session any more? already done?
  mv ./usr/bin/sshd-session ./usr/bin/libexec
 
 # Bootstrap ssh users/config setup

@@ -70,7 +70,7 @@ Fun fact, qemu actually bundles/uses `iPXE` internally. But ignore that. We're g
 5. 'Start' your machine ( `qemu-system-x86_64` , in this instance simulating a bare metal server), passing qemu the `-boot d -cdrom image.iso` options
 6. Observe your virtual bare metal 'machine' do whatever you tell it to do (see step 1, did you see the [section about UEFI](https://ipxe.org/download#:~:text=128kB%20in%20size.-,UEFI,-iPXE%20supports%20both)?).
 
-```
+```bash
 #1. iPXE.org docs https://ipxe.org/docs
 
 # 2.
@@ -79,55 +79,81 @@ cd ipxe/src
 make # yes you have to do this, for all other build targets to be available. You'll probably be missing `build-essential` packages needed to build, so read the output, research and install any missing dependencies.
 # Again, the docs are helpful here https://ipxe.org/download#:~:text=You%20will%20need%20to%20have%20at%20least%20the%20following%20packages%20installed%20in%20order%20to%20build%20iPXE
 
-3. For example, given a manual `qemu` boot (which we'll put iPXE infront of momenterily) consider first the following which boots linux, and simulates a Network interface card (NIC) on
+3. For example, given a manual `qemu` boot (which we'll put iPXE
+   in-front of momentarily) consider first the following which 
+   boots linux, and simulates a Network interface card (NIC) on
    the host using [qemu SLIRP user networking](https://wiki.qemu.org/Documentation/Networking#:~:text=Network%20backend%20types) because its the most compatible friendly *documentation* approach for
    networking (using tun/tap is 'better'/faster):
 
+
+  qemu_args=(
+    -enable-kvm # utilize hardware virtualization of processors
+    -cpu max  # Enables all features supported by the accelerator in the current host
+    -smp 4 
+    -m 4096 
+    -kernel vmlinuz-lts 
+    -initrd new-initramfs-lts
+    -serial mon:stdio # multiplex the QEMU Monitor with the serial port output
+
+    # Since we're using -serial, ask linux to direct kernel log to the serial
+    # so we can see it, without this -append, we won't see the kernel boot log
+    # As there is no default graphical device we disable the display
+    # as we can work entirely in the terminal.
+    -display none
+    -device virtio-net-pci,netdev=mynet0
+    -netdev user,id=mynet0,dns=1.1.1.1
+    )
+    # Start qemu with the above args
+    qemu-system-x86_64 "${qemu_args[@]}"
 ```
-qemu_args=(
-  -enable-kvm # utilize hardware virtualization of processors
-  -cpu max  # Enables all features supported by the accelerator in the current host
-  -smp 4 
-  -m 4096 
-  -kernel vmlinuz-lts 
-  -initrd new-initramfs-lts
-  -serial mon:stdio # multiplex the QEMU Monitor with the serial port output
-  # Since we're using -serial, ask linux to direct kernel log to the serial
-  # so we can see it, withou this -append, we won't see the kernel boot log
-  # As there is no default graphical device we disable the display
-  # as we can work entirely in the terminal.
-  -display none
-  -device virtio-net-pci,netdev=mynet0
-  -netdev user,id=mynet0,dns=1.1.1.1
-)
-# Start qemu with the above args
-qemu-system-x86_64 "${qemu_args[@]}"
-```
+
 The above would start your linux instance, you'd then *manually* configure addressing on the virtual network card with the following:
+
+```shell
 ip link set dev eth0 up
 ip addr add 10.0.2.10/24 dev eth0
-ip route get 1.1.1.1 # no root to host
+ip route get 1.1.1.1 # no root to host, oh no, read on!
+```
+
+Now perform
+
+```bash
 ip route add default via 10.0.2.2
 ip route get 1.1.1.1 # Now you have a route to host :)
-# Where did 10.0.2.2 come from? It's the gateway default when using qemu SLIRP network, see the image
-# on that page https://wiki.qemu.org/Documentation/Networking#:~:text=Network%20backend%20types it's trying
-# to tell you the default addressing scheme- did you notice valid host addresses start from address .9?
-# https://wiki.qemu.org/Documentation/Networking#:~:text=24%20instead%20of-,the%20default,-(10.0.2.0/24)%20and
-# I've read that page for years and it's still only just clicking.. they're not magic numbers they are defaults :)
-wget google.com # You'll see 'bad address'
-# For the same reasons (reading qemu SLIRP networking docs), you'll need to remember to set the nameserver to 10.0.2.3
-echo "nameserver 10.0.2.3" > /etc/resolv.conf
-wget google.com # Now DNS is configured, you'll hapily succeed with google.com being downloaded.
-# Pings won't work with SLIRP- unless enabled, if you need that agian, docs you've read the docs right?
-https://wiki.qemu.org/Documentation/Networking#:~:text=and%20guestfwd%20options.-,Enabling,-ping%20in%20the
 ```
-Those same tedious networking steps above need to be
+
+Where did 10.0.2.2 come from? It's the gateway default when using qemu SLIRP network, see the image on that page https://wiki.qemu.org/Documentation/Networking#:~:text=Network%20backend%20types it's trying
+ to tell you the default addressing scheme.
+Did you notice valid host addresses start from address .9?
+
+https://wiki.qemu.org/Documentation/Networking#:~:text=24%20instead%20of-,the%20default,-(10.0.2.0/24)%20and
+
+(p.s) I've read that page for years and it's still only just clicking.. they're not magic numbers they are defaults :)
+
+Now perform:
+
+```bash
+wget google.com # You'll see 'bad address'
+```
+
+For the same reasons (reading qemu SLIRP networking docs), you'll need to remember to set the nameserver to `10.0.2.3`:
+
+```bash
+echo "nameserver 10.0.2.3" > /etc/resolv.conf
+wget google.com # Now DNS is configured, you'll happily succeed with google.com being downloaded.
+```
+
+Pings *won't* work with SLIRP- unless enabled, if you need that again, docs you've read the docs right? 
+https://wiki.qemu.org/Documentation/Networking#:~:text=and%20guestfwd%20options.-,Enabling,-ping%20in%20the
+
+
+Those same tedious networking steps above need to be:
+
 - encoded into a `script.ipxe` (setting the if up - using the iPXE commands e.g. https://ipxe.org/cmd/ifopen , and all https://ipxe.org/cmd)
 .. TODO finish writing up
 
 
 <strike>TODO: add [iproute2](https://github.com/iproute2/iproute2) for minimal routing.</strike>
-
 
 ## What does this repo not include (yet)
 
@@ -148,7 +174,8 @@ https://landley.net/writing/rootfs-programming.html
 - https://unix.stackexchange.com/questions/193066/how-to-unlock-account-for-public-key-ssh-authorization-but-not-for-password-aut
 - https://stackoverflow.com/a/79151188
 - https://z49x2vmq.github.io/2020/12/24/linux-tiny-qemu/
-
+- https://unix.stackexchange.com/a/489843 `/sbin/init not found in new root. Launching emergency recovery shell
+` / `init not found in new root`
 > "Stuff like this is slowly becoming a lost art" [src](https://www.linuxquestions.org/questions/linux-general-1/bin-bash-as-primary-init-4175543547/#post5367386) ooopse.
 
 
@@ -159,3 +186,4 @@ TODO READ: https://bbs.archlinux.org/viewtopic.php?pid=1378903#p1378903
 
 > "busybox qemu /bin/sh: can't access tty; job control turned off"
 > https://github.com/brgl/busybox/blob/master/shell/cttyhack.c
+

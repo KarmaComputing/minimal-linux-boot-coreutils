@@ -1,6 +1,11 @@
 #!/bin/bash
 
+set -eux
+
+echo $BUILD_ARTIFACTS_DIR
+
 # 1. clone openssh-portable
+rm -rf openssh-portable
 git clone https://github.com/openssh/openssh-portable
 cd openssh-portable
 git checkout V_9_9_P1
