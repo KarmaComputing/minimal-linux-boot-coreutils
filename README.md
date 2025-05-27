@@ -163,11 +163,11 @@ ip route add default via 10.0.2.2
 ip route get 1.1.1.1 # Now you have a route to host :)
 ```
 
-Where did 10.0.2.2 come from? It's the gateway default when using qemu SLIRP network, see the image on that page https://wiki.qemu.org/Documentation/Networking#:~:text=Network%20backend%20types it's trying
+Where did `10.0.2.2` come from? It's the gateway default when using qemu SLiRP network, see the image on that page [https://wiki.qemu.org/Documentation/Networking#:~:text=Network%20backend%20types](https://wiki.qemu.org/Documentation/Networking#:~:text=Network%20backend%20types) it's trying
  to tell you the default addressing scheme.
 Did you notice valid host addresses start from address .9?
 
-https://wiki.qemu.org/Documentation/Networking#:~:text=24%20instead%20of-,the%20default,-(10.0.2.0/24)%20and
+[https://wiki.qemu.org/Documentation/Networking#:~:text=24%20instead%20of-,the%20default,-(10.0.2.0/24)%20and](https://wiki.qemu.org/Documentation/Networking#:~:text=24%20instead%20of-,the%20default,-(10.0.2.0/24)%20and)
 
 (p.s) I've read that page for years and it's still only just clicking.. they're not magic numbers they are defaults :)
 
@@ -185,12 +185,11 @@ wget google.com # Now DNS is configured, you'll happily succeed with google.com 
 ```
 
 Pings *won't* work with SLIRP- unless enabled, if you need that again, docs you've read the docs right? 
-https://wiki.qemu.org/Documentation/Networking#:~:text=and%20guestfwd%20options.-,Enabling,-ping%20in%20the
-
+[https://wiki.qemu.org/Documentation/Networking#:~:text=and%20guestfwd%20options.-,Enabling,-ping%20in%20the](https://wiki.qemu.org/Documentation/Networking#:~:text=and%20guestfwd%20options.-,Enabling,-ping%20in%20the)
 
 Those same tedious networking steps above need to be:
 
-- encoded into a `script.ipxe` (setting the if up - using the iPXE commands e.g. https://ipxe.org/cmd/ifopen , and all https://ipxe.org/cmd)
+- encoded into a `script.ipxe` (setting the if up - using the iPXE commands e.g. [https://ipxe.org/cmd/ifopen](https://ipxe.org/cmd/ifopen) , and all [https://ipxe.org/cmd](https://ipxe.org/cmd))
 .. TODO finish writing up
 
 
@@ -202,22 +201,22 @@ Those same tedious networking steps above need to be:
 
 <strike>### How do I build statically coreutils, do I even need to?
 
-See https://lists.gnu.org/archive/html/coreutils/2019-04/msg00001.html </strike> switched to using `musl`.
+See [https://lists.gnu.org/archive/html/coreutils/2019-04/msg00001.html](https://lists.gnu.org/archive/html/coreutils/2019-04/msg00001.html) </strike> switched to using `musl`.
 
 ## Reading
 
 See also
 
-https://docs.kernel.org/filesystems/ramfs-rootfs-initramfs.html
-https://wiki.gentoo.org/wiki/Custom_Initramfs
-https://unix.stackexchange.com/a/305406
-https://landley.net/writing/rootfs-howto.html
-https://landley.net/writing/rootfs-programming.html
-- https://unix.stackexchange.com/questions/193066/how-to-unlock-account-for-public-key-ssh-authorization-but-not-for-password-aut
-- https://stackoverflow.com/a/79151188
-- https://z49x2vmq.github.io/2020/12/24/linux-tiny-qemu/
-- https://unix.stackexchange.com/a/489843 `/sbin/init not found in new root. Launching emergency recovery shell
-` / `init not found in new root`
+- [https://docs.kernel.org/filesystems/ramfs-rootfs-initramfs.html](https://docs.kernel.org/filesystems/ramfs-rootfs-initramfs.html)
+- [https://wiki.gentoo.org/wiki/Custom_Initramfs](https://wiki.gentoo.org/wiki/Custom_Initramfs)
+- [https://unix.stackexchange.com/a/305406](https://unix.stackexchange.com/a/305406)
+- [https://landley.net/writing/rootfs-howto.html](https://landley.net/writing/rootfs-howto.html)
+- [https://landley.net/writing/rootfs-programming.html](https://landley.net/writing/rootfs-programming.html)
+- [https://unix.stackexchange.com/questions/193066/how-to-unlock-account-for-public-key-ssh-authorization-but-not-for-password-aut](https://unix.stackexchange.com/questions/193066/how-to-unlock-account-for-public-key-ssh-authorization-but-not-for-password-aut)
+- [https://stackoverflow.com/a/79151188](https://stackoverflow.com/a/79151188)
+- [https://z49x2vmq.github.io/2020/12/24/linux-tiny-qemu/](https://z49x2vmq.github.io/2020/12/24/linux-tiny-qemu/)
+- [https://unix.stackexchange.com/a/489843](https://unix.stackexchange.com/a/489843) `/sbin/init` not found in new root. Launching emergency recovery shell / `init not found in new root`
+
 > "Stuff like this is slowly becoming a lost art" [src](https://www.linuxquestions.org/questions/linux-general-1/bin-bash-as-primary-init-4175543547/#post5367386) ooopse.
 
 
