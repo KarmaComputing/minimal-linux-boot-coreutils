@@ -1,9 +1,10 @@
 # Minimal build & boot linux kernel + coreutils (via busybox), openssh & iputils
 
+If you're interested in learning how linux boots, want to debug a kernel boot and/or change it's boot arguments and so forth, you'll enjoy this repo.
+
 ![qemu showing boot into minimal linux](./img/boot-qemu-example.png)
 
 Goal is to have mimimal but realistic node with network capabilities build in (`ip`) and bootstrapped (similar to [alpine's netbot](https://boot.alpinelinux.org/) ([example](https://github.com/KarmaComputing/server-bootstrap/blob/494089caa2c88bbf37a739aa96561231d5847be5/.github/workflows/build-alpine-netboot-image-zfs.yml#L1))). [Clearlinux](https://github.com/clearlinux/distribution) is interesting. This is using musl (which alpine uses) rather than glibc to support staticaly built binaries more easily.
-
 
 ## The process in a nutshell
 
@@ -15,10 +16,19 @@ Goal is to have mimimal but realistic node with network capabilities build in (`
 - Rememebr busybox needs to be static build (see .config)
   - <strike>dropbear needs at least a `dropbear_rsa_host_key` key config or will not start see [gist](https://gist.github.com/mad4j/7983719) </strike>
   - Prefering openssh for end user compatability (statically built)
- 
-## Things you need to build
 
-See [./build-all.sh](./build-all.sh)
+> [!TIP]
+> This repo uses [qemu](https://www.qemu.org/download/) to demonstrate the running of the built linux kernel & `initramfs`.
+> This repo assumes you have installed and compiled qemu with the `./configure --enable-strip` option to support [SLiRP networking](https://wiki.qemu.org/Documentation/Networking) which the [qemu build instructions](https://www.qemu.org/download/#:~:text=the%20git%20repository!-,Build%20instructions,-To%20download%20and) don't point out to you immediately.
+> Qemu is exceptionally versatile, but (for me) easily confusing for it's configuration, and, given it's long history, you'll find lots of out-dates configuration examples.
+>
+> Otherwise the [official Qemu docs](https://www.qemu.org/documentation/) are actually very good. A lot of effort has been made here to provide acurate working examples, and in some cases video recordings of the steps. As the saying goes, rtfm or, "Literacy is a bridge from misery to hope." - Kofi Annan
+
+## Things you need to build - you'll likely want to start here
+
+You'll probably want to build a kernel, with the utilities claimed in the title of this repo (linux kernel + coreutils (via busybox), openssh & iputils).
+
+See [./build-all.sh](./build-all.sh) to build all those. Effort has been made in that script to make it largely re-producible in the sense that it removes (`rm`) it's artifacts each time, and uses `git checkout <tag>/<commit>` to checkout specific versions of the various utilities.
 
 ### How do I extract an `initramfs` / `initrd` gz cpio archive, view it's `init` script and repackage?
 
@@ -30,27 +40,31 @@ For a faster feedback loop, sometimes you want to speed up debugging your `rootf
 (which is stored in the root (`/`) of the `initramfs` image, is ran first. Distributions can use this to perform initial setup, such as ensuring
 a minimal valid linux directory structure (`/dev`, `proc` etc) and handle other boot-time kernel arguments such as `ip=` to set boot time network ip addressing. For example, if you're using  the [_alpine_ distro, their`initramfs``init` file
 parses the kernel `ip=` parameters in the following way](https://gitlab.alpinelinux.org/alpine/mkinitfs/-/blob/master/initramfs-init.in?ref_type=heads#L184-206). But you might choose to apply your own logic (ideally keeping to the `ip` syntax documented at [kernel.org/doc/Documentation/filesystems/nfs/nfsroot.tx](https://www.kernel.org/doc/Documentation/filesystems/nfs/nfsroot.txt#:~:text=ip%3D%3Cclient%2Dip%3E%3A%3Cserver%2Dip%3E%3A%3Cgw%2Dip%3E%3A%3Cnetmask%3E%3A%3Chostname%3E%3A%3Cdevice%3E%3A%3Cautoconf%3E%3A%0A%20%20%20%3Cdns0%2Dip%3E%3A%3Cdns1%2Dip%3E%3A%3Cntp0%2Dip%3E)- though as you can tell by searching online, distributions/documentation can vary so a) Check the distro source (e.g. [alpine's init ip parsing](https://gitlab.alpinelinux.org/alpine/mkinitfs/-/blob/master/initramfs-init.in?ref_type=heads#L184-206) of their packaged initramfs `init` file, or b), choose how to parse `ip=` yourself if you're building your own minimal linux kernel. In this `minimal-linux-boot-coreutils` repo, we package `busybox`, which, like alpine's `init` file, ships with its own logic which also [parses](https://github.com/search?q=repo%3Amirror%2Fbusybox%20ip%3D&type=code) the`ip=` kernel parameter if passed.
- 
-To play around quicky with an already *built* `initramfs` / `initrd` image (for reference, [here's where we _build_ the initramfs image](https://github.com/KarmaComputing/minimal-linux-boot-coreutils/blob/c64027b54b12d488f83cef75b5fbfee3d444e661/build-rootfs.sh#L7)). But building a brand new image etc takes time, for instance, we [compile `busybox` and `openssh`](https://github.com/KarmaComputing/minimal-linux-boot-coreutils/blob/c64027b54b12d488f83cef75b5fbfee3d444e661/build-all.sh#L26-L35) into our`initramfs`. 
+
+To play around quicky with an already *built* `initramfs` / `initrd` image (for reference, [here's where we _build_ the initramfs image](https://github.com/KarmaComputing/minimal-linux-boot-coreutils/blob/c64027b54b12d488f83cef75b5fbfee3d444e661/build-rootfs.sh#L7)). But building a brand new image etc takes time, for instance, we [compile `busybox` and `openssh`](https://github.com/KarmaComputing/minimal-linux-boot-coreutils/blob/c64027b54b12d488f83cef75b5fbfee3d444e661/build-all.sh#L26-L35) into our`initramfs`.
 
 To extract the end product (`rootfs.cpio.gz`) you can do the following:
 Goal: Extract `rootfs.cpio.gz` `initramfs` file into a specified directory without clobbering my actual system's paths (remember `initramfs` contains a full system directory layout with `/usr`, `/dev` , `/bin` etc- you don't want to overrite your laptop's system files!):
-```
+
+```shell
 mkdir out;
 zcat initramfs-lts | cpio -D ./out -idmv --no-absolute-filenames;
 ls -l rootfs.cpio.gz
 ```
+
 Above, you'll not be able to inspect the contents of your built `initramfs`. Take a look at your init script!
-```
+
+```shell
 less out/init
 ```
+
 Perhaps you want to make a change (such as add an `echo` or debug statement to your `init` script.
 
 #### How to I repack my `initramfs`?
 
 We've come full circle, taking inspiration from [build-rootfs.sh](https://github.com/KarmaComputing/minimal-linux-boot-coreutils/blob/c64027b54b12d488f83cef75b5fbfee3d444e661/build-rootfs.sh#L7) we can re-backage our extracted `initramfs` using `cpio` and `gzip` over our `out` folder:
 
-```
+```shell
 cd out # make sure you're in your extracted initramfs folder
 find . | cpio -o -H newc | gzip > ../my-new-rootfs.cpio.gz
 ```
